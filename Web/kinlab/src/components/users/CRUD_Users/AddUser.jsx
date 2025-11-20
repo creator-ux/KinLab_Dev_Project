@@ -16,8 +16,19 @@ function AddUser({ onClose, onUserAdded }) {
   const [matricula, setMatricula] = useState('');
   const [correo, setCorreo] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [telefonoError, setTelefonoError] = useState(null);
   const [contrasena, setContrasena] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Ladas (códigos de país)
+  const ladas = [
+    { codigo: "+52", pais: "MX" },
+    { codigo: "+1", pais: "US/CA" },
+    { codigo: "+34", pais: "ES" },
+    { codigo: "+54", pais: "AR" },
+    { codigo: "+57", pais: "CO" },
+    { codigo: "+56", pais: "CL" },
+  ];
+  const [lada, setLada] = useState('+52');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -44,6 +55,16 @@ function AddUser({ onClose, onUserAdded }) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+
+    // Validación: número de teléfono debe tener exactamente 10 dígitos
+    const telDigits = (telefono || '').trim();
+    if (telDigits.length !== 10) {
+      setIsLoading(false);
+      setTelefonoError('El número debe tener exactamente 10 dígitos');
+      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', message: 'El teléfono debe tener 10 dígitos.' }}));
+      return;
+    }
+    setTelefonoError(null);
 
     const pwd = (contrasena || '').trim();
 
@@ -76,7 +97,7 @@ function AddUser({ onClose, onUserAdded }) {
       id_permiso: permisoId,
       matricula: matricula.trim() === '' ? null : matricula,
       correo,
-      telefono,
+      telefono: `${lada}${telefono}`,
       contrasena: pwd, // La backend esta encargada de hashearla Okis:)
     };
 
@@ -161,18 +182,38 @@ function AddUser({ onClose, onUserAdded }) {
             </div>
             <div>
               <label htmlFor="telefono" className="block text-sm font-medium text-gray-700">Teléfono</label>
-              <input 
-                type="tel" 
-                inputMode="numeric"
-                id="telefono" 
-                value={telefono} 
-                onChange={(e) => setTelefono(e.target.value.replace(/\D/g, ''))} 
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" 
-                required 
-                pattern="[0-9]+"
-                title="Solo números"
-              />
-              <p className="mt-1 text-xs text-gray-500">Ingresa solo números.</p>
+              <div className="mt-1 flex items-center gap-2 w-full">
+                <select
+                  aria-label="Código de país"
+                  value={lada}
+                  onChange={(e) => setLada(e.target.value)}
+                  className="border border-gray-300 rounded-md shadow-sm py-2 px-3 w-24 whitespace-nowrap text-sm"
+                >
+                  {ladas.map(op => (
+                    <option key={op.codigo} value={op.codigo}>{op.codigo} {op.pais}</option>
+                  ))}
+                </select>
+                <input 
+                  type="tel" 
+                  inputMode="numeric"
+                  id="telefono" 
+                  value={telefono} 
+                  onChange={(e) => setTelefono(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                  onInvalid={(e) => e.target.setCustomValidity('El teléfono debe tener 10 dígitos')} 
+                  onInput={(e) => e.target.setCustomValidity('')} 
+                  className="flex-1 min-w-0 border border-gray-300 rounded-md shadow-sm py-2 px-3" 
+                  required 
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  title="El teléfono debe tener 10 dígitos"
+                  placeholder=""
+                />
+              </div>
+              {telefonoError ? (
+                <p className="mt-1 text-xs text-red-600">{telefonoError}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">Ingresa tu número telefónico.</p>
+              )}
             </div>
           </div>
 
@@ -229,7 +270,7 @@ function AddUser({ onClose, onUserAdded }) {
                 title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 onClick={() => setShowPassword(prev => !prev)}
                 className="absolute right-2 top-1/2 -translate-y-1/2"
-                style={{ right: '8px', top: '40%', color: '#6B7280' }}
+                style={{ position: 'absolute', right: '8px', top: '40%', color: '#6B7280' }}
               >
                 {showPassword ? (
                   // Eye off (outline, nítido)

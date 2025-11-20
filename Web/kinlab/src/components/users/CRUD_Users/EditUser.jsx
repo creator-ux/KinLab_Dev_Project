@@ -16,8 +16,19 @@ function EditUser({ onClose, onUserUpdated, usuarioToEdit }) {
   const [matricula, setMatricula] = useState('');
   const [correo, setCorreo] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [telefonoError, setTelefonoError] = useState(null);
   const [contrasena, setContrasena] = useState(''); // Opcional
   const [showPassword, setShowPassword] = useState(false);
+  // Ladas (códigos de país)
+  const ladas = [
+    { codigo: "+52", pais: "MX" },
+    { codigo: "+1", pais: "US/CA" },
+    { codigo: "+34", pais: "ES" },
+    { codigo: "+54", pais: "AR" },
+    { codigo: "+57", pais: "CO" },
+    { codigo: "+56", pais: "CL" },
+  ];
+  const [lada, setLada] = useState('+52');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,7 +42,14 @@ function EditUser({ onClose, onUserUpdated, usuarioToEdit }) {
       setPermisoId(usuarioToEdit.id_permiso || null);
       setMatricula(usuarioToEdit.matricula || '');
       setCorreo(usuarioToEdit.correo || '');
-      setTelefono(usuarioToEdit.telefono || '');
+      const telFull = (usuarioToEdit.telefono || '').toString();
+      const ladaMatch = ladas.find(l => telFull.startsWith(l.codigo));
+      if (ladaMatch) {
+        setLada(ladaMatch.codigo);
+        setTelefono(telFull.slice(ladaMatch.codigo.length).replace(/\D/g, '').slice(0, 10));
+      } else {
+        setTelefono(telFull.replace(/\D/g, '').slice(0, 10));
+      }
       // No prellenar la contraseña: solo cambiar si el usuario escribe una nueva
       setContrasena('');
       
@@ -62,6 +80,16 @@ function EditUser({ onClose, onUserUpdated, usuarioToEdit }) {
     setIsLoading(true);
     setError(null);
 
+    // Validación: número de teléfono debe tener exactamente 10 dígitos
+    const telDigits = (telefono || '').trim();
+    if (telDigits.length !== 10) {
+      setIsLoading(false);
+      setTelefonoError('El número debe tener exactamente 10 dígitos');
+      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', message: 'El teléfono debe tener 10 dígitos.' }}));
+      return;
+    }
+    setTelefonoError(null);
+
     const userData = {
       nombre,
       apellido_paterno: apellidoPaterno,
@@ -69,7 +97,7 @@ function EditUser({ onClose, onUserUpdated, usuarioToEdit }) {
       id_permiso: permisoId,
       matricula: matricula.trim() === '' ? null : matricula,
       correo,
-      telefono,
+      telefono: `${lada}${telefono}`,
     };
 
     // Solo enviar contraseña si el usuario escribió una nueva
@@ -157,14 +185,38 @@ function EditUser({ onClose, onUserUpdated, usuarioToEdit }) {
             </div>
             <div>
               <label htmlFor="edit_telefono" className="block text-sm font-medium text-gray-700">Teléfono</label>
-              <input 
-                type="tel" 
-                id="edit_telefono" 
-                value={telefono} 
-                onChange={(e) => setTelefono(e.target.value)} 
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" 
-                required 
-              />
+              <div className="mt-1 flex items-center gap-2 w-full">
+                <select
+                  aria-label="Código de país"
+                  value={lada}
+                  onChange={(e) => setLada(e.target.value)}
+                  className="border border-gray-300 rounded-md shadow-sm py-2 px-3 w-24 whitespace-nowrap text-sm"
+                >
+                  {ladas.map(op => (
+                    <option key={op.codigo} value={op.codigo}>{op.codigo} {op.pais}</option>
+                  ))}
+                </select>
+                <input 
+                  type="tel" 
+                  id="edit_telefono" 
+                  value={telefono} 
+                  onChange={(e) => setTelefono(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                  onInvalid={(e) => e.target.setCustomValidity('El teléfono debe tener 10 dígitos')} 
+                  onInput={(e) => e.target.setCustomValidity('')} 
+                  className="flex-1 min-w-0 border border-gray-300 rounded-md shadow-sm py-2 px-3" 
+                  required 
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  title="El teléfono debe tener 10 dígitos"
+                  placeholder=""
+                />
+              </div>
+              {telefonoError ? (
+                <p className="mt-1 text-xs text-red-600">{telefonoError}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">Ingresa tu número telefónico.</p>
+              )}
             </div>
           </div>
 
@@ -221,7 +273,7 @@ function EditUser({ onClose, onUserUpdated, usuarioToEdit }) {
                 title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 onClick={() => setShowPassword(prev => !prev)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-sm"
-                style={{ right: '8px', top: '55px',color: '#6B7280' }}
+                style={{ position: 'absolute', right: '8px', top: '72%', color: '#6B7280' }}
               >
                 {showPassword ? (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" shapeRendering="geometricPrecision">
