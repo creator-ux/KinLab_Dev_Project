@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { MdOutlinePanoramaPhotosphereSelect } from 'react-icons/md';
+import { MdClose } from 'react-icons/md';
 
 const NotificationContext = createContext({ notify: () => {} });
 
@@ -11,6 +11,8 @@ const bannerClassFor = (type) => {
       return 'bg-green-100 text-green-800 border-green-300';
     case 'error':
       return 'bg-red-100 text-red-800 border-red-300';
+    case 'danger':
+      return 'bg-red-600 text-white border-red-700';
     case 'warning':
       return 'bg-amber-100 text-amber-800 border-amber-300';
     case 'info':
@@ -63,7 +65,7 @@ export const NotificationProvider = ({ children }) => {
                 className="ml-4 text-gray-600 hover:text-gray-800"
                 onClick={() => remove(n.id)}
               >
-                
+                <MdClose size={18} />
               </button>
             </div>
           </div>

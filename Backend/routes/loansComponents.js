@@ -2,29 +2,88 @@ const express = require ('express');
 const router = express.Router();
 const db = require ('../db');
 const { checkPermissions } = require('../middlewares/auth');
+const sse = require('../sse');
 
-//Get (admin) checkRole(['administrador']),
-router.get('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }]),
+//Get (admin) checkRole(['administrador']), , checkPermissions([{ tipo: 'administrador', nivel: 0 }])
+router.get('/', 
+    checkPermissions(
+        [
+            //En este apartado se agrega los niveles de los administradores segun sea el caso
+            //y los que pueden existir
+            //en dado caso de si a futuro desean usar el sistema para la gestión de los 
+            //demás laboratirios
+            //Deberá agregar a los demas usuarios en la API cuando vaya a crecer
+            //es por cada ruta
+            { tipo: 'administrador', nivel: 0 }, 
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+
     async (req, res) => {
         try{
-            const [rows] = await db.query(
-            `SELECT 
-                pc.id_prestamoC, 
-                pc.cantidad, 
-                pc.fecha_prestamo, 
-                pc.estado_aprobacion,
-                pc.devuelto,
-                pc.id_componente,
-                CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) as nombre_usuario,
-                u.matricula as matricula,
-                u.carrera,
-                c.nombre_componente
-            FROM prestamo_componente pc
-            JOIN usuarios u ON pc.id_usuario = u.id_usuario
-            JOIN componentes c ON pc.id_componente = c.id_componente
-            ORDER BY pc.fecha_prestamo DESC`
-            );
-            res.json(rows);
+            const user = req.user;
+
+            // Admin global: ve todos los préstamos de componentes
+            if (user.tipo === 'administrador' && user.nivel === 0) {
+                const [rows] = await db.query(
+                    `SELECT 
+                        pc.id_prestamoC, 
+                        pc.cantidad, 
+                        pc.motivo,
+                        pc.fecha_prestamo, 
+                        pc.estado_aprobacion,
+                        pc.devuelto,
+                        pc.id_componente,
+                        CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) as nombre_usuario,
+                        u.matricula as matricula,
+                        u.correo as correo,
+                        u.carrera,
+                        c.nombre_componente
+                    FROM prestamo_componente pc
+                    JOIN usuarios u ON pc.id_usuario = u.id_usuario
+                    JOIN componentes c ON pc.id_componente = c.id_componente
+                    ORDER BY pc.fecha_prestamo DESC`
+                );
+                return res.json(rows);
+            }
+
+            // Admin de laboratorio: limitar a sus laboratorios (join componentes→subcategorías→categorías)
+            if (user.tipo === 'administrador' && user.nivel !== 0) {
+                const [labs] = await db.query('SELECT id_laboratorio FROM laboratorios WHERE id_usuario_encargado = ?', [user.id_usuario]);
+                const labIds = labs.map(l => l.id_laboratorio);
+                if (labIds.length === 0) {
+                    // Sin laboratorios asignados: no debe visualizar préstamos de componentes
+                    return res.json([]);
+                }
+                const placeholders = labIds.map(() => '?').join(',');
+
+                const [rows] = await db.query(
+                    `SELECT 
+                        pc.id_prestamoC, 
+                        pc.cantidad, 
+                        pc.motivo,
+                        pc.fecha_prestamo, 
+                        pc.estado_aprobacion,
+                        pc.devuelto,
+                        pc.id_componente,
+                        CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) as nombre_usuario,
+                        u.matricula as matricula,
+                        u.correo as correo,
+                        u.carrera,
+                        c.nombre_componente
+                    FROM prestamo_componente pc
+                    JOIN usuarios u ON pc.id_usuario = u.id_usuario
+                    JOIN componentes c ON pc.id_componente = c.id_componente
+                    JOIN subcategorias s ON c.id_subcategoria = s.id_subcategoria
+                    JOIN categorias cat ON s.id_categoria = cat.id_categoria
+                    WHERE cat.id_laboratorio IN (${placeholders})
+                    ORDER BY pc.fecha_prestamo ASC`,
+                    labIds
+                );
+                return res.json(rows);
+            }
+
+            return res.json([]);
         } catch (error){
             console.error(error);
             res.status(500).json({message: 'Error: no se obtuvieron los prestamos'})
@@ -32,8 +91,17 @@ router.get('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }]),
     }
 );
 
-//Post prestamo (tanto usuario como administrador) checkRole(['administrador', 'alumno', 'profesor']),
-router.post('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }, { tipo: 'usuario', nivel: 0 }]),
+//Post prestamo 
+router.post('/', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }, 
+            { tipo: 'administrador', nivel: 1 },
+            //
+            { tipo: 'usuario', nivel: 0 },
+        ]
+    ),
+
     async (req, res) => {
         const user = req.user;
         const { id_componente, cantidad, motivo } = req.body;
@@ -55,6 +123,8 @@ router.post('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }, { tipo: 
             [user.id_usuario, id_componente, cantidad, motivo]);
 
             await conn.commit();
+            // Notificar a clientes SSE
+            sse.sendEvent({ topic: 'loansComponents', action: 'created', id_prestamoC: result.insertId, id_componente });
             res.status(201).json({
                 message: 'Solicitud de préstamo enviada exitosamente.',
                 id_prestamoC: result.insertId
@@ -72,7 +142,14 @@ router.post('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }, { tipo: 
 );
 
 //PUT aprobar el prestamo checkRole(['administrador']),
-router.put('/approve/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
+router.put('/approve/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }, 
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+
     async (req, res) => {
         const {estado_aprobacion} = req.body;
         const { id: id_prestamoC } = req.params;
@@ -107,11 +184,13 @@ router.put('/approve/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 
                 await conn.query('INSERT INTO log_movimientos (tipo_movimiento, detalle, id_usuario) VALUES (?, ?, ?)',
                     ['aprobacion_prestamo_comp', `Aprobado préstamo ID=${id_prestamoC}, ${prestamo.cantidad} unidades`, admin.id_usuario]
                 );
+                sse.sendEvent({ topic: 'loansComponents', action: 'approved', id_prestamoC, id_componente: prestamo.id_componente });
             } else if (estado_aprobacion === 2) {
                 // No se afecta el stock, solo se registra el rechazo en el log
                 await conn.query('INSERT INTO log_movimientos (tipo_movimiento, detalle, id_usuario) VALUES (?, ?, ?)',
                     ['rechazo_prestamo_comp', `Rechazado préstamo ID=${id_prestamoC}`, admin.id_usuario]
                 );
+                sse.sendEvent({ topic: 'loansComponents', action: 'rejected', id_prestamoC, id_componente: prestamo.id_componente });
             }
 
             await conn.commit();
@@ -128,7 +207,16 @@ router.put('/approve/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 
 );
 
 // GET para que un usuario vea solo sus préstamos
-router.get('/mis-prestamos', checkPermissions([ { tipo: 'administrador', nivel: 0 }, { tipo: 'usuario', nivel: 0 } ]), 
+router.get('/mis-prestamos', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }, 
+            { tipo: 'administrador', nivel: 1 },
+            //
+            { tipo: 'usuario', nivel: 0 },
+        ]
+    ),
+
     async (req, res) => {
         try {
             const user = req.user;
@@ -155,7 +243,16 @@ router.get('/mis-prestamos', checkPermissions([ { tipo: 'administrador', nivel: 
 );
 
 // DELETE para que un usuario cancele su propia solicitud de préstamo de componente
-router.delete('/cancel/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 }, { tipo: 'usuario', nivel: 0 } ]), 
+router.delete('/cancel/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }, 
+            { tipo: 'administrador', nivel: 1 }, 
+            //
+            { tipo: 'usuario', nivel: 0 },
+        ]
+    ),
+
     async (req, res) => {
         try {
             const { id: id_prestamoC } = req.params;
@@ -187,6 +284,7 @@ router.delete('/cancel/:id', checkPermissions([ { tipo: 'administrador', nivel: 
             await db.query('DELETE FROM prestamo_componente WHERE id_prestamoC = ?', [id_prestamoC]);
 
             res.json({ message: 'La solicitud de préstamo ha sido cancelada exitosamente.' });
+            try { sse.sendEvent({ topic: 'loansComponents', action: 'canceled', id_prestamoC }); } catch(_) {}
 
         } catch (error) {
             console.error("Error al cancelar el préstamo de componente:", error);
@@ -196,7 +294,14 @@ router.delete('/cancel/:id', checkPermissions([ { tipo: 'administrador', nivel: 
 );
 
 // PUT para confirmar la devolución de un préstamo (solo admin)
-router.put('/return/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
+router.put('/return/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+
     async (req, res) => {
         const { id: id_prestamoC } = req.params;
         const admin = req.user;
@@ -227,6 +332,7 @@ router.put('/return/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 }
             );
 
             await conn.commit();
+            sse.sendEvent({ topic: 'loansComponents', action: 'returned', id_prestamoC, id_componente: prestamo.id_componente });
             res.json({ message: 'Devolución confirmada exitosamente.' });
 
         } catch (error) {

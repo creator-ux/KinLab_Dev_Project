@@ -3,7 +3,7 @@ import DashboardLayout from './components/DashboardLayout';
 import InventaryPage from './pages/InventaryPage';
 import LoansPages from './pages/LoansPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import { Routes, Route  } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import RecordPage from './pages/RecordPage';
 import IncidentesPage from './pages/IncidentsPage';
 import HomePage from './pages/HomePage';
@@ -14,6 +14,7 @@ import LoansEquipment from './components/loans_request/LoansEquipment';
 import AreasPage from './pages/AreasPage';
 import ReturnStatusPage from './pages/ReturnStatusPage';// area para la revision del estado de los préstamos
 import UsersPage from './pages/UsersPage';
+import DevPage from './components/dev_in/DevPage';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
       <Routes>
 
         <Route path='/' element={<Login/>}/>
+        <Route path='/dev' element={<DevPage/>} />
 
         {/*//Rutas proegidas*/}
         <Route path = '/home' element = {
@@ -60,7 +62,7 @@ function App() {
         </Route>
       </Route>
 
-      </Routes> 
+      </Routes>
    
   );
 }

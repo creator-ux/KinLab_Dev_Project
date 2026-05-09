@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import Card from '../components/common/Card';
 import { FaCommentDots, FaRegCommentDots, FaFlask } from 'react-icons/fa';
 import { FaComputer, FaTriangleExclamation } from 'react-icons/fa6';
@@ -7,8 +7,14 @@ import { RiFileHistoryLine } from 'react-icons/ri';
 import { AnimatedTitle } from '../components/common/AnimatedTitle';
 import { SiAwsfargate } from "react-icons/si";
 import { HiUsers } from "react-icons/hi2";
+import { AuthContext } from '../context/AuthContext.jsx';
+import { canAccessAreas, canAccessHistory } from '../utils/permissions.js'; //isAdminLevel <-lo elimine porque si queria que se vea la card de usuarios
 
 function HomePage (){
+    const { user } = useContext(AuthContext);
+    const showAreas = canAccessAreas(user); // sólo admin nivel 0
+    const showHistory = canAccessHistory(user);
+    //const showUsuarios = isAdminLevel(user, 0); // sólo admin nivel 0
 
     return(
     <div className='h-full'>
@@ -45,24 +51,28 @@ function HomePage (){
                 icon={FaRegCommentDots}
                 to="/home/loans?tab=componentes"
             />
-            <Card
-                title="Historial"
-                description=""
-                icon={RiFileHistoryLine}
-                to="/home/reports/record"
-            />
+            {showHistory && (
+                <Card
+                    title="Historial"
+                    description=""
+                    icon={RiFileHistoryLine}
+                    to="/home/reports/record"
+                />
+            )}
             <Card
                 title=  "Incidentes"
                 description=""
                 icon={FaTriangleExclamation}
                 to="/home/reports/incidents"
             />
-            <Card
-                title="Laboratorios"
-                description=""
-                icon={FaFlask}
-                to="/home/areas"
-            />
+            {showAreas && (
+                <Card
+                    title="Laboratorios"
+                    description=""
+                    icon={FaFlask}
+                    to="/home/areas"
+                />
+            )}
             <Card
                 title="Estado de préstamos"
                 description=""
@@ -75,6 +85,7 @@ function HomePage (){
                 icon={HiUsers}
                 to="/home/users"
             />
+            
 
         </div>
 

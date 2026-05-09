@@ -61,7 +61,9 @@ function EditEquipment({ equipoToEdit, onClose, onEquipoUpdated }){
         descripcion: formData.descripcion,
         cantidad: parseInt(formData.cantidad ?? 0, 10),
         id_laboratorio: parseInt(formData.id_laboratorio ?? 0, 10),
-        id_imagen: idImagen
+        id_imagen: idImagen,
+        // Preserva el estado actual del equipo para evitar que se vuelva NULL en el backend
+        estado: (formData.estado ?? 'disponible')
       };
 
       await api.put(`/api/equipment/${formData.id_equipo}`, payload);

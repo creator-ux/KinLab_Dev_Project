@@ -101,7 +101,7 @@ function AreasTable() {
       fetchAreas(); 
       closeDeleteModal();
       // Banner de confirmación de eliminación
-      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'warning', message: 'Laboratorio eliminado' }}));
+      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'danger', message: 'Laboratorio eliminado' }}));
     } catch (error) {
       console.error("Error al eliminar:", error);
       setDeleteError(error.message); 

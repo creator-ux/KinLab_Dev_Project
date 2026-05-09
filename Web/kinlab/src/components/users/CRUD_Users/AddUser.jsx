@@ -217,8 +217,8 @@ function AddUser({ onClose, onUserAdded }) {
             </div>
           </div>
 
-          {/* Fila para Matrícula, Tipo (permiso) y Contraseña */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Fila para Matrícula y Tipo (permiso) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="matricula" className="block text-sm font-medium text-gray-700">Matrícula</label>
               <input 
@@ -250,46 +250,73 @@ function AddUser({ onClose, onUserAdded }) {
                 )}
               </select>
             </div>
-            <div className="relative">
-              <label htmlFor="contrasena" className="block text-sm font-medium text-gray-700">Contraseña</label>
-              <input 
-                type={showPassword ? "text" : "password"}
-                id="contrasena" 
-                value={contrasena} 
-                onChange={(e) => setContrasena(e.target.value.replace(/\s+/g, ''))} 
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                required 
-                minLength={8}
-                pattern="[A-Za-z0-9]{8,}"
-                title="Mínimo 8 caracteres, solo letras y números; sin espacios ni símbolos"
-              />
-              <button
-                type="button"
-                aria-pressed={showPassword}
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                onClick={() => setShowPassword(prev => !prev)}
-                className="absolute right-2 top-1/2 -translate-y-1/2"
-                style={{ position: 'absolute', right: '8px', top: '40%', color: '#6B7280' }}
-              >
-                {showPassword ? (
-                  // Eye off (outline, nítido)
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" shapeRendering="geometricPrecision">
-                    <path d="M2 2l20 20" vectorEffect="non-scaling-stroke"/>
-                    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C5 20 1 12 1 12a21.81 21.81 0 0 1 5.06-6.06" vectorEffect="non-scaling-stroke"/>
-                    <path d="M9.88 5.52A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.81 21.81 0 0 1-4.57 5.76" vectorEffect="non-scaling-stroke"/>
-                    <path d="M12 15a3 3 0 1 0 0-6" vectorEffect="non-scaling-stroke"/>
-                  </svg>
-                ) : (
-                  // Eye (outline, nítido)
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" shapeRendering="geometricPrecision">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8" vectorEffect="non-scaling-stroke"/>
-                    <circle cx="12" cy="12" r="3" vectorEffect="non-scaling-stroke"/>
-                  </svg>
-                )}
-              </button>
-              <p className="mt-1 text-xs text-gray-500">Mínimo 8 caracteres; mezcla letras y números. Sin espacios ni símbolos.</p>
-            </div>
+          </div>
+
+          {/* Contraseña en sección inferior, similar a Edición */}
+          <div className="pt-2 relative">
+            <label htmlFor="contrasena" className="block text-sm font-medium text-gray-700">Contraseña</label>
+            <input 
+              type={showPassword ? "text" : "password"}
+              id="contrasena" 
+              value={contrasena} 
+              onChange={(e) => setContrasena(e.target.value.replace(/\s+/g, ''))} 
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+              required 
+              minLength={8}
+              pattern="[A-Za-z0-9]{8,}"
+              title="Mínimo 8 caracteres, solo letras y números; sin espacios ni símbolos"
+            />
+            <button
+              type="button"
+              aria-pressed={showPassword}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              onClick={() => setShowPassword(prev => !prev)}
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+              style={{ position: 'absolute', right: '16px', top: '37%', color: '#6B7280' }}
+            >
+              {showPassword ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" shapeRendering="geometricPrecision">
+                  <path d="M2 2l20 20" vectorEffect="non-scaling-stroke"/>
+                  <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C5 20 1 12 1 12a21.81 21.81 0 0 1 5.06-6.06" vectorEffect="non-scaling-stroke"/>
+                  <path d="M9.88 5.52A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.81 21.81 0 0 1-4.57 5.76" vectorEffect="non-scaling-stroke"/>
+                  <path d="M12 15a3 3 0 1 0 0-6" vectorEffect="non-scaling-stroke"/>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" shapeRendering="geometricPrecision">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8" vectorEffect="non-scaling-stroke"/>
+                  <circle cx="12" cy="12" r="3" vectorEffect="non-scaling-stroke"/>
+                </svg>
+              )}
+            </button>
+            {/* Checklist dinámico de reglas */}
+            <ul className="mt-2 text-xs space-y-1">
+              {(() => {
+                const pwd = contrasena || '';
+                const hasMin = pwd.length >= 8;
+                const isAlnum = pwd === '' ? false : /^[A-Za-z0-9]+$/.test(pwd);
+                const hasMix = /[A-Za-z]/.test(pwd) && /\d/.test(pwd);
+                const Item = ({ ok, text }) => (
+                  <li className={ok ? 'text-green-600' : 'text-gray-600'}>
+                    <span className="inline-flex items-center gap-1">
+                      {ok ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                      )}
+                      {text}
+                    </span>
+                  </li>
+                );
+                return (
+                  <>
+                    <Item ok={hasMin} text="Mínimo 8 caracteres" />
+                    <Item ok={hasMix} text="Incluye al menos una letra y un número" />
+                    <Item ok={isAlnum} text="Solo letras y números (sin espacios ni símbolos)" />
+                  </>
+                );
+              })()}
+            </ul>
           </div>
           
           {error && (

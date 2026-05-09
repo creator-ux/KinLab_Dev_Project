@@ -7,7 +7,13 @@ const bcrypt = require('bcrypt');
 const { checkPermissions } = require('../middlewares/auth');
 
 // Pedido GET de los usuarios (incluye tipo y nivel desde permisos)
-router.get('/', checkPermissions([{ tipo: 'administrador', nivel: '*' }]), 
+router.get('/', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: '*' }
+        ]
+    ),
+
     async (req, res) => {
         try{
             const query = `
@@ -24,8 +30,14 @@ router.get('/', checkPermissions([{ tipo: 'administrador', nivel: '*' }]),
     }
 );
 
-// POST para crear a los usuarios (acepta id_permiso o mapea por tipo)
-router.post('/', checkPermissions([{ tipo: 'administrador', nivel: '*' }]),  
+// POST para crear a los usuarios (sólo admin nivel 0; extensible por nivel)
+router.post('/', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }
+        ]
+    ),
+
     async (req, res) => {
         try{
             const {nombre, apellido_paterno, apellido_materno, tipo, id_permiso, matricula, 
@@ -74,7 +86,13 @@ router.post('/', checkPermissions([{ tipo: 'administrador', nivel: '*' }]),
 );
 
 // PUT para la actualización (acepta id_permiso o mapea por tipo)
-router.put('/:id', checkPermissions([{ tipo: 'administrador', nivel: '*' }]), 
+router.put('/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: '*' }
+        ]
+    ),
+
     async (req, res) => {
         try{
             const {id} = req.params;
@@ -128,8 +146,14 @@ router.put('/:id', checkPermissions([{ tipo: 'administrador', nivel: '*' }]),
 );
 
 
-//el delete checkRole(['administrador']),
-router.delete('/:id', checkPermissions([{ tipo: 'administrador', nivel: '*' }]), 
+// Eliminar usuarios: sólo administrador de nivel 0
+router.delete('/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }
+        ]
+    ),
+     
     async (req, res) => {
         try{
             await db.query('DELETE FROM usuarios WHERE id_usuario = ?', [req.params.id]);

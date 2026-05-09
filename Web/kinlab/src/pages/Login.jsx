@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from "react-router-dom";
 import { StyledLoginWrapper } from '../components/common/LoginStyle.jsx'
 import { useAuth } from '../hooks/useAuth.js';
 import { api } from '../apiClient.js';
@@ -94,7 +95,7 @@ function Login() {
               title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               onClick={() => setShowPassword(prev => !prev)}
               className=""
-              style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280' }}
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6B7280' }}
             >
               {showPassword ? (
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" shapeRendering="geometricPrecision">
@@ -113,7 +114,7 @@ function Login() {
             </div>
             {passwordError && <p className="error-text">{passwordError}</p>}
             <div className="forgot">
-              <a rel="noopener noreferrer" href="#">¿Olvidaste tu contraseña?</a>
+              <Link to="/dev">¿Olvidaste tu contraseña?</Link>
             </div>
           </div>
           <button type="submit" className="sign">Ingresar</button>
@@ -131,9 +132,11 @@ function Login() {
             </svg>
           </button>
         </div>
+        {/*
         <p className="signup">¿No tienes una cuenta?
           <a rel="noopener noreferrer" href="#"> Regístrate</a>
         </p>
+        */}
       </div>
     </StyledLoginWrapper>
   );

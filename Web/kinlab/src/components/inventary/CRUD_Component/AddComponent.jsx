@@ -79,7 +79,7 @@ function AddComponent({ onClose, onComponentAdded }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg shadow-xl z-50 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4">Agregar Nuevo Componente</h2>
+        <h2 className="text-2xl font-bold mb-4">Agregar Componente</h2>
         <form onSubmit={handleSubmit}>
           {/* ... Campos de Nombre, Cantidad, Laboratorio, Descripción (no cambian) ... */}
           <div className="mb-4">
@@ -161,7 +161,7 @@ function AddComponent({ onClose, onComponentAdded }) {
             <button 
                 type="submit" 
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-              Guardar Componente
+              Guardar
             </button>
           </div>
         </form>

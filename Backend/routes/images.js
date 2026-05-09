@@ -5,11 +5,11 @@ const db = require('../db');
 const { checkPermissions } = require('../middlewares/auth');
 
 // Configuración de Multer para guardar la imagen en la memoria RAM del servidor
-// Esto es bueno para luego guardarla como BLOB en la base de datos.
+// Esto es bueno para luego guardarla como MEDIUMBLOB en la base de datos.
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB como maximo de peso en imagenes
   fileFilter: (req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png'];
     if (allowed.includes(file.mimetype)) return cb(null, true);
@@ -20,7 +20,21 @@ const upload = multer({
 // POST para subir una nueva imagen
 // La ruta escuchará en '/api/imagenes/'
 // 'upload.single('imagen')' le dice a multer que esperamos un solo archivo en un campo llamado 'imagen'.
-router.post('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }]), upload.single('imagen'), 
+router.post('/', 
+    checkPermissions(
+        [
+            //En este apartado se agrega los niveles de los administradores segun sea el caso
+            //y los que pueden existir
+            //en dado caso de si a futuro desean usar el sistema para la gestión de los 
+            //demás laboratirios
+            //Deberá agregar a los demas usuarios en la API cuando vaya a crecer
+            //es por cada ruta
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ), 
+    upload.single('imagen'),
+
     async (req, res) => {
         try {
             // req.file es donde multer pone la información del archivo subido.
@@ -49,7 +63,18 @@ router.post('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }]), upload
 );
 
 // GET para obtener una imagen por su ID
-router.get('/:id', 
+router.get('/:id',
+    checkPermissions(
+        [
+            //En este apartado se agrega los niveles de los administradores segun sea el caso
+            //y los que pueden existir
+            //en dado caso de si a futuro desean usar el sistema para la gestión de los 
+            //demás laboratirios
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+    
     async (req, res) => {
         try {
             const { id } = req.params;

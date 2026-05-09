@@ -59,7 +59,8 @@ export const StyledLoginWrapper = LoginStyle.div`
     border: 1px solid #d1d5db;
     outline: 0;
     background-color: #ffffff;
-    padding: 0.75rem 1rem;
+    /* espacio extra a la derecha para el botón de mostrar/ocultar */
+    padding: 0.75rem 2.25rem 0.75rem 1rem;
     color: #1f2937;
     transition: border-color 0.2s;
   }
@@ -73,6 +74,13 @@ export const StyledLoginWrapper = LoginStyle.div`
   .input-group input.error {
     border-color: #ef4444; /* rojo-500 */
     box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+  }
+
+  /* Oculta el botón nativo de Edge para revelar contraseña
+     para evitar doble icono (nuestro botón y el del navegador) */
+  .input-group input[type="password"]::-ms-reveal,
+  .input-group input[type="password"]::-ms-clear {
+    display: none;
   }
 
   .error-text {

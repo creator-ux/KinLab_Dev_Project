@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import { FaEdit, FaTrashAlt } from 'react-icons/fa';
 import { api } from "../../apiClient"; // Asumiendo que tienes tu api client
 import Loader from '../common/Loader';
 import Pagination from '../common/Pagination';
 import DeleteUsuario from './CRUD_Users/DeleteUser';
 import EditUsuario from './CRUD_Users/EditUser';
+import { AuthContext } from '../../context/AuthContext.jsx';
+import { isAdminLevel } from '../../utils/permissions.js';
 
 /**
  * Mapea el 'tipo' a un texto y color.
@@ -21,6 +23,9 @@ const getTipoInfo = (tipo) => {
  * Tabla que carga datos de usuarios y maneja modales de Edición/Borrado.
  */
 function UsersTable() {
+  const { user } = useContext(AuthContext);
+  const canDelete = isAdminLevel(user, 0); // sólo admin nivel 0
+  const showRoleColumns = isAdminLevel(user, 0); // Tipo y Nivel visibles solo para admin nivel 0
   const [usuarios, setUsuarios] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -81,6 +86,10 @@ function UsersTable() {
   };
   
   const handleDeleteClick = (usuario) => {
+    if (!canDelete) {
+      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', message: 'No tienes permiso para eliminar usuarios.' }}));
+      return;
+    }
     setUsuarioToDelete(usuario);
     setDeleteError(null); 
     setIsDeleteModalOpen(true);
@@ -98,7 +107,7 @@ function UsersTable() {
     try {
       
       await api.del(`/api/users/${usuarioToDelete.id_usuario}`);
-      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'warning', message: `Usuario eliminado: ${usuarioToDelete.nombre} ${usuarioToDelete.apellido_paterno}` }}));
+      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'danger', message: `Usuario eliminado: ${usuarioToDelete.nombre} ${usuarioToDelete.apellido_paterno}` }}));
       fetchUsuarios(); // Recarga los datos
       closeDeleteModal();
     } catch (error) {
@@ -108,9 +117,10 @@ function UsersTable() {
   };
 
   const renderTableContent = () => {
-    if (isLoading) return <Loader colSpan={7} />; 
-    if (error) return <tr key='error'><td colSpan="7" className="text-center py-5 text-red-500">{error}</td></tr>;
-    if (currentItems.length === 0) return <tr key='no-data'><td colSpan="7" className="text-center py-5 text-gray-500">No se encontraron usuarios.</td></tr>;
+    const colCount = 5 + (showRoleColumns ? 2 : 0); // base 5 + Tipo/Nivel opcionales
+    if (isLoading) return <Loader colSpan={colCount} />; 
+    if (error) return <tr key='error'><td colSpan={colCount} className="text-center py-5 text-red-500">{error}</td></tr>;
+    if (currentItems.length === 0) return <tr key='no-data'><td colSpan={colCount} className="text-center py-5 text-gray-500">No se encontraron usuarios.</td></tr>;
 
     return currentItems.map((usuario) => {
       const { texto, className } = getTipoInfo(usuario.tipo);
@@ -124,12 +134,16 @@ function UsersTable() {
           <td className="py-3 px-5">{usuario.correo}</td>
           <td className="py-3 px-5">{usuario.telefono}</td>
           
-          <td className="py-3 px-5">
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${className}`}>
-              {texto}
-            </span>
-          </td>
-          <td className="py-3 px-5">{usuario.nivel}</td>
+          {showRoleColumns && (
+            <td className="py-3 px-5">
+              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${className}`}>
+                {texto}
+              </span>
+            </td>
+          )}
+          {showRoleColumns && (
+            <td className="py-3 px-5">{usuario.nivel}</td>
+          )}
           
           <td className="py-3 px-5 text-center">
             <div className="flex item-center justify-center space-x-3">
@@ -139,12 +153,14 @@ function UsersTable() {
                 className="p-2 rounded-full bg-gray-200 text-gray-600 hover:bg-blue-600 hover:text-white transition-colors duration-200">
                   <FaEdit size={19} />
               </button>
-              <button 
-                onClick={() => handleDeleteClick(usuario)}
-                title="Eliminar" 
-                className="p-2 rounded-full bg-gray-200 text-gray-600 hover:bg-red-600 hover:text-white transition-colors duration-200">
-                  <FaTrashAlt size={19} />
-              </button>
+              {canDelete && (
+                <button 
+                  onClick={() => handleDeleteClick(usuario)}
+                  title="Eliminar" 
+                  className="p-2 rounded-full bg-gray-200 text-gray-600 hover:bg-red-600 hover:text-white transition-colors duration-200">
+                    <FaTrashAlt size={19} />
+                </button>
+              )}
             </div>
           </td>
         </tr>
@@ -165,8 +181,12 @@ function UsersTable() {
                 <th className="py-3 px-5 font-semibold">Matrícula</th>
                 <th className="py-3 px-5 font-semibold">Correo</th>
                 <th className="py-3 px-5 font-semibold">Teléfono</th>
-                <th className="py-3 px-5 font-semibold">Tipo</th>
-                <th className="py-3 px-5 font-semibold">Nivel</th>
+                {showRoleColumns && (
+                  <th className="py-3 px-5 font-semibold">Tipo</th>
+                )}
+                {showRoleColumns && (
+                  <th className="py-3 px-5 font-semibold">Nivel</th>
+                )}
                 <th className="py-3 px-5 font-semibold text-center">Acciones</th>
               </tr>
             </thead>

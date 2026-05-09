@@ -1,19 +1,25 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const app = express();
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+const sse = require('./sse');
 
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
 app.use(cors({ origin: corsOrigin }));
 app.use(helmet());
+// Rate limit básico para peticiones anónimas. Saltamos el límite si hay token Bearer
 const limiter = rateLimit({
   windowMs: process.env.RATE_LIMIT_WINDOW_MS ? Number(process.env.RATE_LIMIT_WINDOW_MS) : 15 * 60 * 1000,
   max: process.env.RATE_LIMIT_MAX ? Number(process.env.RATE_LIMIT_MAX) : 200,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    const auth = req.headers['authorization'];
+    return Boolean(auth && auth.startsWith('Bearer '));
+  }
 });
 app.use(limiter);
 app.use(express.json());
@@ -56,6 +62,9 @@ app.use('/api/images', require('./routes/images'));
 
 //ruta para Longs
 app.use('/api/reportes', require('./routes/logMov'));
+
+// Canal de eventos en tiempo real (SSE)
+app.get('/api/events', sse.register);
 
 //Inicio del servico
 app.listen(port, () => {

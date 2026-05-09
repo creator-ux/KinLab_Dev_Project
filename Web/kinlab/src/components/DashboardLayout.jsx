@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { FaUserCircle, FaSignOutAlt, FaBox, FaChevronDown, FaChevronUp, FaHistory, FaExclamationTriangle, FaHome, FaFlask, FaClipboardList, FaTools, FaMicrochip } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth.js'; 
+import { canAccessAreas, canAccessHistory } from '../utils/permissions.js';
 // Iconos de FA unificados para coherencia visual
 import { api } from '../apiClient.js';
 import { MdOutlineFactCheck } from "react-icons/md";
@@ -18,7 +19,7 @@ function DashboardLayout (){
 
     const idleTimerRef = useRef(null);
     // 10 minutos, 60 segundos
-    const IDLE_TIMEOUT = 35 * 60 * 1000; //cuenta regresiva de inactividad para cerrar la sesio¿ón
+    const IDLE_TIMEOUT = 20 * 60 * 1000; //cuenta regresiva de inactividad para cerrar la sesio¿ón
 
     const resetIdleTimer = useCallback(() => {
       if (idleTimerRef.current) {
@@ -129,13 +130,15 @@ function DashboardLayout (){
             <FaHome className="mr-3" size={20} />
               Inicio
           </Link>
-          <Link
-            to="/home/areas"
-            className={isAreasActive ? activeLinkStyle : inactiveLinkStyle}
-          >
-            <FaFlask className="mr-3" />
-            Áreas
-          </Link>
+          {canAccessAreas(user) && (
+            <Link
+              to="/home/areas"
+              className={isAreasActive ? activeLinkStyle : inactiveLinkStyle}
+            >
+              <FaFlask className="mr-3" />
+              Áreas
+            </Link>
+          )}
           <Link
             to = "/home/users"
             className={isUsersActive ? activeLinkStyle : inactiveLinkStyle}
@@ -204,12 +207,14 @@ function DashboardLayout (){
             </button>
               {isReportsOpen && (
                 <div className="pl-6 mt-2 space-y-2 border-l-2 border-gray-400 ml-3">
-                  <Link 
-                    to="/home/reports/record" 
-                    className={`flex items-center text-sm py-1 ${location.pathname === '/home/reports/record' ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-black'}`}
-                  >
-                    <FaHistory className="mr-3" /> Historial
-                  </Link>
+                  {canAccessHistory(user) && (
+                    <Link 
+                      to="/home/reports/record" 
+                      className={`flex items-center text-sm py-1 ${location.pathname === '/home/reports/record' ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-black'}`}
+                    >
+                      <FaHistory className="mr-3" /> Historial
+                    </Link>
+                  )}
 
                   <Link 
                     to="/home/reports/incidents" 

@@ -4,7 +4,19 @@ const db = require('../db');
 const {checkPermissions} = require('../middlewares/auth');
 
 //petición GET
-router.get('/', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]), 
+router.get('/', 
+    checkPermissions(
+        [
+            //En este apartado se agrega los niveles de los administradores segun sea el caso
+            //y los que pueden existir
+            //en dado caso de si a futuro desean usar el sistema para la gestión de los 
+            //demás laboratirios
+            //Deberá agregar a los demas usuarios en la API cuando vaya a crecer
+            //es por cada ruta
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ), 
 
     async (req, res) => {
         try {
@@ -18,7 +30,14 @@ router.get('/', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
 );
 
 // peticion POST 
-router.post('/', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]), 
+router.post('/', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+
     async (req, res) => {
         try {
             const { nombre_laboratorio, id_usuario_encargado } = req.body;
@@ -48,7 +67,15 @@ router.post('/', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
 );
 
 // petición PUT
-router.put('/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]), 
+router.put('/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+            
+        ]
+    ),
+
     async (req, res) => {
         try {
             const { id } = req.params;
@@ -78,7 +105,14 @@ router.put('/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
 );
 
 //muestra los detalles de loslaboratoiros y sus encargados
-router.get('/:id/detalles', checkPermissions([{ tipo: 'administrador', nivel: 0 }]),
+router.get('/:id/detalles', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+
     async (req, res) => {
         try {
             const { id } = req.params;
@@ -114,7 +148,14 @@ router.get('/:id/detalles', checkPermissions([{ tipo: 'administrador', nivel: 0 
 
 
 // DELETE
-router.delete('/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]), 
+router.delete('/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+
     async (req, res) => {
         try {
             const { id } = req.params;

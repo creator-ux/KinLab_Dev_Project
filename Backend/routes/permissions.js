@@ -4,8 +4,13 @@ const db = require('../db');
 const { checkPermissions } = require('../middlewares/auth');
 
 // --- GET TODOS LOS PERMISOS ---
-// Asumo que solo los administradores pueden ver la lista de permisos
-router.get('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }]), 
+router.get('/', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }
+        ]
+    ),
+
     async (req, res) => {
         try {
             const [rows] = await db.query('SELECT * FROM permisos ORDER BY tipo, nivel');
@@ -17,8 +22,15 @@ router.get('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }]),
     }
 );
 
-// --- POST (CREAR) UN NUEVO PERMISO ---
-router.post('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }]), 
+// --- POST ---
+router.post('/', 
+    checkPermissions(
+        
+        [
+            { tipo: 'administrador', nivel: 0 }
+        ]
+    ),
+
     async (req, res) => {
         try {
             const { tipo, nivel } = req.body;
@@ -54,8 +66,14 @@ router.post('/', checkPermissions([{ tipo: 'administrador', nivel: 0 }]),
     }
 );
 
-// --- PUT (ACTUALIZAR) UN PERMISO ---
-router.put('/:id', checkPermissions([{ tipo: 'administrador', nivel: 0 }]), 
+// --- PUT ---
+router.put('/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }
+        ]
+    ),
+
     async (req, res) => {
         try {
             const { id } = req.params;
@@ -86,8 +104,14 @@ router.put('/:id', checkPermissions([{ tipo: 'administrador', nivel: 0 }]),
     }
 );
 
-// --- DELETE (ELIMINAR) UN PERMISO ---
-router.delete('/:id', checkPermissions([{ tipo: 'administrador', nivel: 0 }]), 
+// --- DELETE ---
+router.delete('/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }
+        ]
+    ),
+     
     async (req, res) => {
         try {
             const { id } = req.params;

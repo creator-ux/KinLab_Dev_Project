@@ -27,7 +27,7 @@ function Components() {
   const [componentToDelete, setComponentToDelete] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 6;
 
     const fetchComponentes = useCallback (async() => {
       try{
@@ -85,7 +85,7 @@ function Components() {
 
       setComponentes(prev => prev.filter(c => c.id_componente !== componentToDelete.id_componente));
       setIsDeleteModalOpen(false);
-      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'warning', message: 'Componente eliminado' }}));
+          globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'danger', message: 'Componente eliminado' }}));
     } catch (err) {
       globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', message: `Error: ${err.message}` }}));
     }
@@ -196,10 +196,12 @@ function Components() {
             />
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
+          {/* 
           <button className="flex items-center bg-white border border-gray-300 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100">
             <FiFilter className="mr-2" />
             Filtro
           </button>
+          */}
           <button 
             onClick={() => setIsAddModalOpen(true)} 
             className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 shadow">

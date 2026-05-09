@@ -4,7 +4,15 @@ const db = require('../db');
 const {checkPermissions} = require ('../middlewares/auth');
 
 //peteción GET
-router.get('/', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
+router.get('/', 
+    checkPermissions(
+        [
+            // Historial visible sólo para administrador de nivel 0
+            { tipo: 'administrador', nivel: 0 },
+
+        ]
+    ),
+
     async (req, res) => {
         try{
             const query = 
@@ -13,7 +21,8 @@ router.get('/', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
                 l.tipo_movimiento,
                 l.detalle,
                 l.fecha,
-                u.nombre AS nombre_usuario
+                -- Construye nombre completo y evita cadena vacía; si no hay nombre, usa 'Usuario <id>'
+                COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno)), ''), CONCAT('Usuario ', u.id_usuario)) AS nombre_usuario
             FROM log_movimientos l
             LEFT JOIN usuarios u ON l.id_usuario = u.id_usuario
             ORDER BY l.fecha DESC`;

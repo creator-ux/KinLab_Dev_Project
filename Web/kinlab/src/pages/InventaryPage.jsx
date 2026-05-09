@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import EquiposTable from '../components/inventary/Equipments';
 import ComponentesTable from '../components/inventary/Components';
 import { useAuth } from '../hooks/useAuth.js'; 
+import { isAdmin } from '../utils/permissions.js';
 import { FaPlus } from 'react-icons/fa';
 import { useSearchParams } from 'react-router-dom';
 
@@ -30,8 +31,8 @@ function InventaryPage() {
         <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Gestión de Inventario</h1>
       </div>
 
-       {/* Mostramos los botones solo si el usuario es administrador (nivel 0) */}
-      {user?.nivel === 0 && (
+       {/* Botones visibles sólo para administrador nivel 0 */}
+      {isAdmin(user) && (
         <div className="flex space-x-2 md-4">
           <button 
             onClick={() => setIsCategoryModalOpen(true)} 

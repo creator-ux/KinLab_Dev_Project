@@ -18,7 +18,7 @@ function Equipments() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4;
+  const itemsPerPage = 6;
 
   //estados para los modales
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -100,7 +100,7 @@ function Equipments() {
       // Cierra el modal
       setIsDeleteModalOpen(false);
       setEquipoToDelete(null);
-      globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'warning', message: 'Equipo eliminado' }}));
+    globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'danger', message: 'Equipo eliminado' }}));
     } catch (error) {
       console.error("Error al eliminar:", error);
       globalThis.dispatchEvent(new CustomEvent('notify', { detail: { type: 'error', message: 'No se pudo eliminar el equipo.' }}));
@@ -178,15 +178,23 @@ function Equipments() {
         <td className="py-3 px-5">{equipo.descripcion}</td>
 
         <td className="py-3 px-5">
-          <span
-            className={`px-2 py-1 text-xs font-semibold rounded-full ${getEstadoClass(
-              equipo.estado
-            )}`}
-          >
-            {equipo.estado === 'disponible'
+          {(() => {
+            const estadoRaw = (equipo.estado ?? '').toString();
+            const estadoNorm = estadoRaw.trim().toLowerCase();
+            const esDisponible = estadoNorm === '' || estadoNorm === 'disponible';
+            const estadoTexto = esDisponible
               ? `Disponible: ${equipo.cantidad}`
-              : capitalizeFirstLetter((equipo.estado || "").replace("_", " "))}
-          </span>
+              : capitalizeFirstLetter(estadoNorm.replace('_', ' '));
+            return (
+              <span
+                className={`px-2 py-1 text-xs font-semibold rounded-full ${getEstadoClass(
+                  esDisponible ? 'disponible' : estadoNorm
+                )}`}
+              >
+                {estadoTexto}
+              </span>
+            );
+          })()}
         </td>
         <td className="py-3 px-5 text-center">
           <div className="flex item-center justify-center space-x-3">
@@ -225,10 +233,12 @@ function Equipments() {
             />
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
+          {/* 
           <button className="flex items-center bg-white border border-gray-300 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100">
             <FiFilter className="mr-2" />
             Filtro
           </button>
+          */}
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 shadow"

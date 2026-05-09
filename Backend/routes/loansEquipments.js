@@ -2,30 +2,90 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db')
 const {checkPermissions} = require('../middlewares/auth');
+const sse = require('../sse');
 
-//petición Get, solo administrador checkRole(['administrador']),
-router.get('/', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
+//petición Get,
+router.get('/', 
+    checkPermissions(
+        [
+            //En este apartado se agrega los niveles de los administradores segun sea el caso
+            //y los que pueden existir
+            //en dado caso de si a futuro desean usar el sistema para la gestión de los 
+            //demás laboratirios
+            //Deberá agregar a los demas usuarios en la API cuando vaya a crecer
+            //es por cada ruta
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+            //
+        ]
+    ),
+
     async (req, res) => {
         try{
-            const [rows] = await db.query(
-            `SELECT 
-                pe.id_prestamoE, 
-                pe.fecha_prestamo, 
-                pe.estado_aprobacion,
-                pe.cantidad,
-                pe.devuelto,
-                pe.id_equipo,
-                CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) as nombre_usuario,
-                u.matricula as matricula,
-                u.carrera, 
-                e.nombre_equipo,
-                e.id_laboratorio
-            FROM prestamo_equipo pe
-            JOIN usuarios u ON pe.id_usuario = u.id_usuario
-            JOIN equipos e ON pe.id_equipo = e.id_equipo
-            ORDER BY pe.fecha_prestamo DESC`
-            );
-            res.json(rows);
+            const user = req.user;
+
+            // Admin global: ve todos los préstamos
+            if (user.tipo === 'administrador' && user.nivel === 0) {
+                const [rows] = await db.query(
+                    `SELECT 
+                        pe.id_prestamoE, 
+                        pe.motivo,
+                        pe.fecha_prestamo, 
+                        pe.estado_aprobacion,
+                        pe.cantidad,
+                        pe.devuelto,
+                        pe.id_equipo,
+                        CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) as nombre_usuario,
+                        u.matricula as matricula,
+                        u.correo as correo,
+                        u.carrera, 
+                        e.nombre_equipo,
+                        e.id_laboratorio
+                    FROM prestamo_equipo pe
+                    JOIN usuarios u ON pe.id_usuario = u.id_usuario
+                    JOIN equipos e ON pe.id_equipo = e.id_equipo
+                    ORDER BY pe.fecha_prestamo DESC`
+                );
+                return res.json(rows);
+            }
+
+            // Admin de laboratorio: limitar a sus laboratorios
+            if (user.tipo === 'administrador' && user.nivel !== 0) {
+                const [labs] = await db.query('SELECT id_laboratorio FROM laboratorios WHERE id_usuario_encargado = ?', [user.id_usuario]);
+                const labIds = labs.map(l => l.id_laboratorio);
+                if (labIds.length === 0) {
+                    // Sin laboratorios asignados: no debe visualizar préstamos
+                    return res.json([]);
+                }
+                const placeholders = labIds.map(() => '?').join(',');
+
+                const [rows] = await db.query(
+                    `SELECT 
+                        pe.id_prestamoE, 
+                        pe.motivo,
+                        pe.fecha_prestamo, 
+                        pe.estado_aprobacion,
+                        pe.cantidad,
+                        pe.devuelto,
+                        pe.id_equipo,
+                        CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) as nombre_usuario,
+                        u.matricula as matricula,
+                        u.correo as correo,
+                        u.carrera, 
+                        e.nombre_equipo,
+                        e.id_laboratorio
+                    FROM prestamo_equipo pe
+                    JOIN usuarios u ON pe.id_usuario = u.id_usuario
+                    JOIN equipos e ON pe.id_equipo = e.id_equipo
+                    WHERE e.id_laboratorio IN (${placeholders})
+                    ORDER BY pe.fecha_prestamo ASC`,
+                    labIds
+                );
+                return res.json(rows);
+            }
+
+            // En esta ruta solo hay administradores; por seguridad devolvemos vacío si cae aquí
+            return res.json([]);
         } catch (error){
             console.error(error);
             res.status(500).json({message: 'Error: No se obtuvieron los prestamos'});
@@ -33,8 +93,17 @@ router.get('/', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
     }
 );
 
-//Post admin y usuario checkRole(['administrador','alumno', 'profesor']),
-router.post('/', checkPermissions([ { tipo: 'administrador', nivel: 0 }, {tipo: 'usuario', nivel: 0} ]),
+//Post admin y usuario 
+router.post('/', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }, 
+            { tipo: 'administrador', nivel: 1 },
+            //
+            {tipo: 'usuario', nivel: 0},
+        ]
+    ),
+
     async(req, res)=>{
         const {id_equipo, motivo} = req.body;
 
@@ -59,6 +128,8 @@ router.post('/', checkPermissions([ { tipo: 'administrador', nivel: 0 }, {tipo: 
                     [user.id_usuario, id_equipo, motivo, 0]);
 
                 await conn.commit();
+                // Notificar a clientes SSE
+                sse.sendEvent({ topic: 'loansEquipment', action: 'created', id_prestamoE: result.insertId, id_equipo });
                 res.status(201).json({
                     message: 'Solicitud de préstamo enviada exitosamente.',
                     id_prestamoE: result.insertId
@@ -78,7 +149,14 @@ router.post('/', checkPermissions([ { tipo: 'administrador', nivel: 0 }, {tipo: 
 );
 
 // Put de aprobacion checkRole(['administrador']),
-router.put('/approve/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]),
+router.put('/approve/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 }, 
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+
     async(req, res) =>{
         const {estado_aprobacion} = req.body;
         const { id: id_prestamoE } = req.params;
@@ -104,11 +182,13 @@ router.put('/approve/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 
                 await conn.query('INSERT INTO log_movimientos (tipo_movimiento, detalle, id_usuario) VALUES (?, ?, ?)',
                     ['aprobacion_prestamo_equipo', `Aprobado préstamo ID=${id_prestamoE} para equipo ID=${id_equipo}`, admin.id_usuario]
                 );
+                sse.sendEvent({ topic: 'loansEquipment', action: 'approved', id_prestamoE, id_equipo });
             } else if (estado_aprobacion === 2) {
                 // No se afecta el stock, solo se registra el rechazo en el log
                 await conn.query('INSERT INTO log_movimientos (tipo_movimiento, detalle, id_usuario) VALUES (?, ?, ?)',
                     ['rechazo_prestamo_equipo', `Rechazado préstamo ID=${id_prestamoE}`, admin.id_usuario]
                 );
+                sse.sendEvent({ topic: 'loansEquipment', action: 'rejected', id_prestamoE, id_equipo });
             }
 
             await conn.commit();
@@ -124,7 +204,16 @@ router.put('/approve/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 
 );
 
 // GET para que un usuario vea solo sus préstamos
-router.get('/mis-prestamos', checkPermissions([ { tipo: 'administrador', nivel: 0 }, { tipo: 'usuario', nivel: 0} ]), 
+router.get('/mis-prestamos', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+            //
+            { tipo: 'usuario', nivel: 0},
+        ]
+    ),
+
     async (req, res) => {
         try {
             const user = req.user;
@@ -150,7 +239,15 @@ router.get('/mis-prestamos', checkPermissions([ { tipo: 'administrador', nivel: 
 );
 
 // DELETE para que un usuario cancele su propia solicitud de préstamo
-router.delete('/cancel/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 }, { tipo: 'usuario', nivel:0} ]),
+router.delete('/cancel/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },//
+            { tipo: 'usuario', nivel:0},
+        ]
+    ),
+
     async (req, res) => {
         try {
             const { id: id_prestamoE } = req.params;
@@ -182,6 +279,7 @@ router.delete('/cancel/:id', checkPermissions([ { tipo: 'administrador', nivel: 
             await db.query('DELETE FROM prestamo_equipo WHERE id_prestamoE = ?', [id_prestamoE]);
 
             res.json({ message: 'La solicitud de préstamo ha sido cancelada exitosamente.' });
+            try { sse.sendEvent({ topic: 'loansEquipment', action: 'canceled', id_prestamoE }); } catch(_) {}
 
         } catch (error) {
             console.error("Error al cancelar el préstamo de equipo:", error);
@@ -191,7 +289,14 @@ router.delete('/cancel/:id', checkPermissions([ { tipo: 'administrador', nivel: 
 );
 
 // PUT para confirmar la devolución de un préstamo (solo admin)
-router.put('/return/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 } ]), 
+router.put('/return/:id', 
+    checkPermissions(
+        [
+            { tipo: 'administrador', nivel: 0 },
+            { tipo: 'administrador', nivel: 1 },
+        ]
+    ),
+
     async (req, res) => {
         const { id: id_prestamoE } = req.params;
         const admin = req.user;
@@ -215,13 +320,17 @@ router.put('/return/:id', checkPermissions([ { tipo: 'administrador', nivel: 0 }
 
             //Marca el préstamo como devuelto y establece la fecha de devolución
             await conn.query('UPDATE prestamo_equipo SET devuelto = 1, fecha_devolucion = NOW() WHERE id_prestamoE = ?', [id_prestamoE]);
- 
+
+            //Restituye el estado del equipo a 'disponible'
+            await conn.query('UPDATE equipos SET estado = "disponible" WHERE id_equipo = ?', [prestamo.id_equipo]);
+
             //Registra el movimiento en el log
             await conn.query('INSERT INTO log_movimientos (tipo_movimiento, detalle, id_usuario) VALUES (?, ?, ?)',
                 ['devolucion', `Devolución confirmada para préstamo ID=${id_prestamoE}`, admin.id_usuario]
             );
 
             await conn.commit();
+            sse.sendEvent({ topic: 'loansEquipment', action: 'returned', id_prestamoE, id_equipo: prestamo.id_equipo });
             res.json({ message: 'Devolución confirmada exitosamente.' });
 
         } catch (error) {

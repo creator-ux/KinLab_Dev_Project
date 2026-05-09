@@ -1,12 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../apiClient.js';
-import { FaCheck, FaTimes, FaExclamationCircle } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaExclamationCircle, FaInfoCircle } from 'react-icons/fa';
 import { FiFilter } from 'react-icons/fi';
 import { HiOutlineArrowPath } from 'react-icons/hi2';
 import Loader from '../common/Loader';
 import Pagination from '../common/Pagination';
+import InfoModal from './info/InfoModal.jsx';
+import { useAuth } from '../../hooks/useAuth.js';
+import { isAdminLevel } from '../../utils/permissions.js';
 
 function LoansEquipment (){
+    const { user } = useAuth();
+    const showCareer = isAdminLevel(user, 0); // sólo admin nivel 0 ve "Carrera"
+    const colCount = showCareer ? 9 : 8;
     const [solicitudes, setSolicitudes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -24,6 +30,9 @@ function LoansEquipment (){
         id_laboratorio: null,
         accion_tomada: ''
     });
+    // Modal de información (motivo)
+    const [infoOpen, setInfoOpen] = useState(false);
+    const [infoItems, setInfoItems] = useState([]);
 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
@@ -74,6 +83,29 @@ function LoansEquipment (){
             }
         };
         fetchEquipos();
+    }, []);
+
+    // Suscripción SSE: escucha eventos del backend para refrescar en tiempo real
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const url = `${api.baseUrl}/api/events${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+        let es;
+        try {
+            es = new EventSource(url);
+            es.onmessage = (ev) => {
+                try {
+                    const msg = JSON.parse(ev.data);
+                    if (msg && msg.topic === 'loansEquipment') {
+                        globalThis.dispatchEvent(new CustomEvent('inventory-updated'));
+                    }
+                } catch (_) {
+                    // Ignorar parseos inválidos
+                }
+            };
+        } catch (_) {
+            // Si falla, el polling seguirá funcionando
+        }
+        return () => { try { es && es.close(); } catch(_) {} };
     }, []);
 
     const handleUpdateRequest = async (id, nuevoEstado) => {
@@ -246,8 +278,8 @@ function LoansEquipment (){
         const onVisibilityChange = () => { if (!document.hidden) refreshData(); };
         document.addEventListener('visibilitychange', onVisibilityChange);
 
-        // Polling cada 5 segundos
-        intervalId = setInterval(refreshData, 5000);
+        // Polling cada 15 segundos para evitar saturar el backend
+        intervalId = setInterval(refreshData, 15000);
 
         return () => {
             globalThis.removeEventListener('inventory-updated', onInventoryUpdated);
@@ -259,9 +291,9 @@ function LoansEquipment (){
     
 
     const renderTableContent = () => {
-        if (isLoading) return <Loader colSpan={9} />;
-        if (error) return <tr key="error"><td colSpan={9} className="text-center py-4 text-red-500">{error}</td></tr>;
-        if (filteredSolicitudes.length === 0) return <tr key="no-data"><td colSpan={9} className="text-center py-4">No hay solicitudes para mostrar.</td></tr>;
+        if (isLoading) return <Loader colSpan={colCount} />;
+        if (error) return <tr key="error"><td colSpan={colCount} className="text-center py-4 text-red-500">{error}</td></tr>;
+        if (filteredSolicitudes.length === 0) return <tr key="no-data"><td colSpan={colCount} className="text-center py-4">No hay solicitudes para mostrar.</td></tr>;
 
         return currentItems.map((solicitud) => {
             const { text, className } = getEstadoInfo(solicitud);
@@ -275,25 +307,36 @@ function LoansEquipment (){
                     <td className="py-3 px-5 font-medium">{solicitud.nombre_usuario}</td>
             
                     <td className="py-3 px-5">{solicitud.matricula || 'N/A'}</td>
-                    <td className="py-3 px-5">{solicitud.carrera || 'N/A'}</td>
-                    <td className="py-3 px-5">{solicitud.nombre_equipo}</td>
+                    {showCareer && (<td className="py-3 px-5">{solicitud.carrera || 'N/A'}</td>)}
+                    <td className="py-3 px-5">
+                        <div className="flex items-center gap-2">
+                            <span className="font-medium">{solicitud.nombre_equipo}</span>
+                            <button
+                                title="Ver motivo"
+                                onClick={() => {
+                                    const fecha = new Date(solicitud.fecha_prestamo);
+                                    setInfoItems([
+                                        { label: 'Motivo', value: solicitud.motivo || 'Sin motivo especificado' },
+                                        { label: 'Correo', value: solicitud.correo || 'N/A' },
+                                        { label: 'Carrera', value: solicitud.carrera || 'N/A' },
+                                        { label: 'Fecha', value: fecha.toLocaleDateString() },
+                                        { label: 'Hora', value: fecha.toLocaleTimeString() },
+                                        { label: 'Cantidad', value: String(solicitud.cantidad) }
+                                    ]);
+                                    setInfoOpen(true);
+                                }}
+                                className="p-1 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition-colors"
+                            >
+                                <FaInfoCircle size={14} />
+                            </button>
+                        </div>
+                    </td>
                     <td className="py-3 px-5 text-center">{solicitud.cantidad}</td>
                     <td className="py-3 px-5 text-center">
                         {typeof stockActual !== 'number' ? (
                             <span className="text-gray-400">-</span>
                         ) : (
-                            <div className="flex items-center justify-center gap-2">
-                                <span className="text-gray-800">{typeof stockActual === 'number' ? stockActual : '-'}</span>
-                                {isPendiente && (
-                                    <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">- {delta} previsto</span>
-                                )}
-                                {isAceptado && solicitud.devuelto === 0 && (
-                                    <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">- {delta} aplicado</span>
-                                )}
-                                {isPendiente && typeof previsto === 'number' && (
-                                    <span className="text-xs text-gray-500">→ {previsto}</span>
-                                )}
-                            </div>
+                            <span className="text-gray-800">{typeof stockActual === 'number' ? stockActual : '-'}</span>
                         )}
                     </td>
                     <td className="py-3 px-5">
@@ -339,7 +382,7 @@ function LoansEquipment (){
                             <th className="py-3 px-5 font-semibold">Usuario</th>
           
                             <th className="py-3 px-5 font-semibold">Matrícula</th>
-                            <th className="py-3 px-5 font-semibold">Carrera</th>
+                            {showCareer && (<th className="py-3 px-5 font-semibold">Carrera</th>)}
                             <th className="py-3 px-5 font-semibold">Equipo Solicitado</th>
                             <th className="py-3 px-5 font-semibold text-center">Cantidad</th>
                             <th className="py-3 px-5 font-semibold text-center">Inventario</th>
@@ -362,6 +405,13 @@ function LoansEquipment (){
                 onPageChange={setCurrentPage}
             />
         </div>
+
+        <InfoModal
+            isOpen={infoOpen}
+            onClose={() => setInfoOpen(false)}
+            title="Detalles del préstamo"
+            items={infoItems}
+        />
 
         {incidentModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
